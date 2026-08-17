@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>GameForge</title>
+
+<style>
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: Arial, sans-serif;
+  background: #111827;
+  color: white;
+  overflow: hidden;
+}
+
+header {
+  height: 60px;
+  background: #1f2937;
+  display: flex;
+  align-items: center;
+  padding: 0 18px;
+  gap: 20px;
+  border-bottom: 2px solid #374151;
+}
+
+.logo {
+  font-size: 22px;
+  font-weight: bold;
+}
+
+button {
+  border: none;
+  border-radius: 7px;
+  padding: 9px 14px;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.play {
+  background: #22c55e;
+  color: white;
+}
+
+.clear {
+  background: #ef4444;
+  color: white;
+}
+
+.editor {
+  display: flex;
+  height: calc(100vh - 60px);
+}
+
+.sidebar {
+  width: 190px;
+  background: #1f2937;
+  padding: 15px;
+  border-right: 2px solid #374151;
+}
+
+.sidebar h2 {
+  font-size: 16px;
+  margin-bottom: 12px;
+}
+
+.tool {
+  width: 100%;
+  margin-bottom: 8px;
+  background: #374151;
+  color: white;
+  text-align: left;
+}
+
+.tool:hover {
+  background: #4b5563;
+}
+
+.game-area {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  background:
+    linear-gradient(#1e3a5f 1px, transparent 1px),
+    linear-gradient(90deg, #1e3a5f 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+
+#game {
+  position: absolute;
+  inset: 0;
+}
+
+.object {
+  position: absolute;
+  width: 32px;
+  height: 32px;
+  user-select: none;
+}
+
+.grass {
+  background: #22c55e;
+  border: 2px solid #15803d;
+}
+
+.stone {
+  background: #6b7280;
+  border: 2px solid #374151;
+}
+
+.dirt {
+  background: #92400e;
+  border: 2px solid #78350f;
+}
+
+.platform {
+  background: #a855f7;
+  border: 2px solid #7e22ce;
+  height: 16px;
+}
+
+.player {
+  background: #3b82f6;
+  border: 3px solid #bfdbfe;
+  border-radius: 6px;
+}
+
+.enemy {
+  background: #ef4444;
+  border: 3px solid #fecaca;
+  border-radius: 50%;
+}
+
+.coin {
+  background: gold;
+  border: 3px solid #f59e0b;
+  border-radius: 50%;
+}
+
+.checkpoint {
+  background: #f97316;
+  border-radius: 4px;
+}
+
+.finish {
+  background: white;
+  border: 4px solid #22c55e;
+}
+
+#message {
+  position: absolute;
+  top: 15px;
+  left: 15px;
+  background: rgba(0,0,0,.6);
+  padding: 10px 15px;
+  border-radius: 8px;
+  z-index: 1000;
+}
+</style>
+</head>
+
+<body>
+
+<header>
+  <div class="logo">🎮 GameForge</div>
+
+  <button class="play" onclick="togglePlay()">
+    ▶ Play
+  </button>
+
+  <button class="clear" onclick="clearGame()">
+    🗑 Clear
+  </button>
+</header>
+
+<div class="editor">
+
+  <aside class="sidebar">
+
+    <h2>Objects</h2>
+
+    <button class="tool" onclick="selectTool('player')">
+      🔵 Player
+    </button>
+
+    <button class="tool" onclick="selectTool('grass')">
+      🟩 Grass Block
+    </button>
+
+    <button class="tool" onclick="selectTool('stone')">
+      🪨 Stone Block
+    </button>
+
+    <button class="tool" onclick="selectTool('dirt')">
+      🟫 Dirt Block
+    </button>
+
+    <button class="tool" onclick="selectTool('platform')">
+      🟪 Platform
+    </button>
+
+    <button class="tool" onclick="selectTool('enemy')">
+      🔴 Enemy
+    </button>
+
+    <button class="tool" onclick="selectTool('coin')">
+      🟡 Coin
+    </button>
+
+    <button class="tool" onclick="selectTool('checkpoint')">
+      🚩 Checkpoint
+    </button>
+
+    <button class="tool" onclick="selectTool('finish')">
+      🏁 Finish
+    </button>
+
+    <button class="tool" onclick="selectTool('delete')">
+      ❌ Delete
+    </button>
+
+  </aside>
+
+  <main class="game-area" id="gameArea">
+
+    <div id="message">
+      Select an object, then click the grid!
+    </div>
+
+    <div id="game"></div>
+
+  </main>
+
+</div>
+
+<script>
+
+let selectedTool = "grass";
+let playing = false;
+
+const game = document.getElementById("game");
+const gameArea = document.getElementById("gameArea");
+
+function selectTool(tool) {
+  selectedTool = tool;
+
+  document.getElementById("message").textContent =
+    "Selected: " + tool;
+}
+
+gameArea.addEventListener("click", function(event) {
+
+  if (playing) return;
+
+  if (event.target !== gameArea) return;
+
+  const rect = gameArea.getBoundingClientRect();
+
+  let x = event.clientX - rect.left;
+  let y = event.clientY - rect.top;
+
+  // Snap objects to the grid
+  x = Math.floor(x / 32) * 32;
+  y = Math.floor(y / 32) * 32;
+
+  if (selectedTool === "delete") {
+    deleteObject(x, y);
+    return;
+  }
+
+  createObject(selectedTool, x, y);
+});
+
+function createObject(type, x, y) {
+
+  const object = document.createElement("div");
+
+  object.classList.add("object");
+  object.classList.add(type);
+
+  object.style.left = x + "px";
+  object.style.top = y + "px";
+
+  object.dataset.type = type;
+  object.dataset.x = x;
+  object.dataset.y = y;
+
+  object.addEventListener("click", function(event) {
+
+    if (!playing) {
+      event.stopPropagation();
+
+      if (selectedTool === "delete") {
+        object.remove();
+      }
+    }
+
+  });
+
+  game.appendChild(object);
+}
+
+function deleteObject(x, y) {
+
+  const objects = document.querySelectorAll(".object");
+
+  objects.forEach(object => {
+
+    if (
+      Number(object.dataset.x) === x &&
+      Number(object.dataset.y) === y
+    ) {
+      object.remove();
+    }
+
+  });
+}
+
+function clearGame() {
+
+  if (confirm("Delete everything?")) {
+    game.innerHTML = "";
+  }
+
+}
+
+function togglePlay() {
+
+  playing = !playing;
+
+  const button = document.querySelector(".play");
+
+  if (playing) {
+
+    button.textContent = "⏹ Stop";
+
+    document.getElementById("message").textContent =
+      "🎮 PLAY MODE";
+
+  } else {
+
+    button.textContent = "▶ Play";
+
+    document.getElementById("message").textContent =
+      "EDITOR MODE";
+
+  }
+
+}
+
+</script>
+
+</body>
+</html>
